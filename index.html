@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học liệu Tương tác: Bài 4 - Bài tập về Dao động điều hoà</title>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            startup: { typeset: false } 
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        .animate-fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+
+<body class="bg-slate-50 p-4 md:p-8 font-sans min-h-screen text-gray-800">
+    <div id="app" v-cloak class="max-w-6xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden p-6 md:p-8 border border-slate-100">
+        
+        <h1 class="text-3xl font-extrabold text-center text-blue-700 mb-2 uppercase tracking-wide">
+            BÀI 4: BÀI TẬP VỀ DAO ĐỘNG ĐIỀU HOÀ
+        </h1>
+        <p class="text-center text-gray-500 mb-8 font-medium">Yêu cầu 5: Vận dụng được các phương trình về li độ, vận tốc, gia tốc — Vật lí 11</p>
+
+        <div class="flex flex-wrap border-b-2 border-blue-200 mb-6 gap-1 bg-slate-50 rounded-t-lg">
+            <button v-for="tab in tabs" :key="tab.id" @click="switchTab(tab.id)"
+                :class="['px-6 py-4 font-bold text-base transition-all duration-300', 
+                         currentTab === tab.id ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-blue-100 hover:text-blue-800']">
+                {{ tab.name }}
+            </button>
+        </div>
+
+        <div class="min-h-[500px]">
+
+            <div v-show="currentTab === 'tab1'" class="animate-fade-in">
+                <h2 class="text-2xl font-bold mb-4 text-blue-800 border-l-4 border-blue-600 pl-3">Trò chơi tương tác: Phân loại đặc trưng Động học</h2>
+                <p class="mb-6 text-gray-700 text-base">Học sinh hãy kéo các đặc điểm hoặc phương trình thực tế ở bên phải thả vào đúng vùng bản chất của các đại lượng bên trái.</p>
+                
+                <div class="flex flex-col md:flex-row gap-8">
+                    <div class="w-full md:w-1/2 flex flex-col gap-5">
+                        <h3 class="font-bold text-xl border-b-2 border-blue-200 pb-2 text-blue-600">Các đại lượng động học</h3>
+                        
+                        <div v-for="zone in conceptZones" :key="zone.id" 
+                             class="p-4 rounded-xl border-2 transition-colors duration-300 bg-slate-50"
+                             :class="getZoneColor(zone)">
+                            <div class="font-bold mb-3 text-base text-gray-800" v-html="zone.title"></div>
+                            
+                            <div class="min-h-[100px] bg-white rounded-lg border-dashed border-2 border-gray-400 p-2 flex flex-col gap-2 justify-center shadow-inner"
+                                 @dragover.prevent @drop="onDrop($event, zone.id)">
+                                 
+                                <div v-if="zone.items.length === 0" class="text-gray-400 text-center italic text-sm py-2">Kéo thẻ và thả vào đây...</div>
+                                
+                                <div v-for="item in zone.items" :key="item.id"
+                                     draggable="true" @dragstart="onDragStart($event, item, zone.id)"
+                                     class="p-2.5 bg-white shadow-md rounded border border-blue-200 cursor-grab text-left font-medium text-blue-950 hover:bg-blue-50 transition-colors">
+                                    {{ item.text }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-full md:w-1/2 flex flex-col gap-5">
+                        <h3 class="font-bold text-xl border-b-2 border-amber-200 pb-2 text-amber-600">Đặc điểm & Biểu thức (Nguồn)</h3>
+                        
+                        <div class="bg-amber-50 p-6 rounded-xl min-h-[350px] border border-amber-200 shadow-inner"
+                             @dragover.prevent @drop="onDrop($event, 'bank')">
+                            <div class="flex flex-col gap-4 min-h-[250px]">
+                                <div v-if="formulaBank.length === 0" class="text-amber-500 font-bold text-center mt-10">Đã phân loại hết thẻ! 🎉</div>
+                                
+                                <div v-for="item in formulaBank" :key="item.id"
+                                     draggable="true" @dragstart="onDragStart($event, item, 'bank')"
+                                     class="p-4 bg-white shadow-md rounded-lg border-l-4 border-orange-500 cursor-grab hover:bg-orange-100 font-medium text-base transition-colors">
+                                    {{ item.text }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-show="currentTab === 'tab2'" class="animate-fade-in text-lg text-gray-800 leading-relaxed space-y-6">
+                <h2 class="text-2xl font-bold text-blue-800 border-l-4 border-blue-600 pl-3">Kiến thức nền tảng trọng tâm</h2>
+                
+                <div class="bg-blue-50 p-5 rounded-lg border border-blue-200">
+                    <h3 class="text-xl font-bold text-blue-700 mb-2">1. Bộ ba phương trình Động học cốt lõi</h3>
+                    <p class="mb-3">Để giải quyết các bài toán thời điểm, chúng ta áp dụng trực tiếp hệ thống phương trình trạng thái liên tục theo thời gian $t$:</p>
+                    <ul class="list-disc pl-6 mb-3 space-y-1.5 text-base">
+                        <li><b>Phương trình Li độ:</b> $x = A \cos(\omega t + \varphi)$ (cm)</li>
+                        <li><b>Phương trình Vận tốc:</b> $v = -\omega A \sin(\omega t + \varphi)$ (cm/s). Vận tốc luôn <b>sớm pha $\frac{\pi}{2}$</b> so với li độ.</li>
+                        <li><b>Phương trình Gia tốc:</b> $a = -\omega^2 x = -\omega^2 A \cos(\omega t + \varphi)$ (cm/s²). Gia tốc luôn <b>ngược pha</b> so với li độ.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-indigo-50 p-5 rounded-lg border border-indigo-200">
+                    <h3 class="text-xl font-bold text-indigo-700 mb-2">2. Trạng thái cực đại và các Vị trí đặc biệt</h3>
+                    <div class="overflow-x-auto text-base my-2">
+                        <table class="w-full bg-white rounded-lg overflow-hidden shadow-sm border border-slate-200">
+                            <thead>
+                                <tr class="bg-indigo-600 text-white text-left">
+                                    <th class="p-3">Đại lượng</th>
+                                    <th class="p-3">Giá trị cực đại</th>
+                                    <th class="p-3">Tại Vị trí cân bằng ($x=0$)</th>
+                                    <th class="p-3">Tại Vị trí biên ($x=\pm A$)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr>
+                                    <td class="p-3 font-semibold">Li độ $x$</td>
+                                    <td class="p-3">$A$</td>
+                                    <td class="p-3 text-gray-500">Bằng $0$</td>
+                                    <td class="p-3 text-red-600 font-medium">Cực đại ($\pm A$)</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-semibold">Vận tốc $v$</td>
+                                    <td class="p-3">$\omega A$</td>
+                                    <td class="p-3 text-green-600 font-medium">Độ lớn cực đại ($\pm \omega A$)</td>
+                                    <td class="p-3 text-gray-500">Bằng $0$</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-semibold">Gia tốc $a$</td>
+                                    <td class="p-3">$\omega^2 A$</td>
+                                    <td class="p-3 text-gray-500">Bằng $0$</td>
+                                    <td class="p-3 text-purple-600 font-medium">Độ lớn cực đại ($\pm \omega^2 A$)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-purple-50 p-5 rounded-lg border border-purple-200">
+                    <h3 class="text-xl font-bold text-purple-700 mb-2">3. Phân tích thông số sơ đồ Bàn xoay hình tròn</h3>
+                    <p class="mb-3">Hình chiếu (bóng đổ) của một thanh nhỏ đặt cách tâm bàn một khoảng $R$ quay đều với tốc độ góc $\Omega$ tạo ra một dao động điều hoà trùng khít hoàn toàn với các thông số:</p>
+                    <div class="text-center my-4 bg-white p-4 rounded shadow-sm inline-block w-full text-xl font-semibold text-purple-950">
+                        $$ \text{Biên độ } A = R \quad \text{và} \quad \text{Tần số góc } \omega = \Omega $$
+                    </div>
+                </div>
+            </div>
+
+            <div v-show="currentTab === 'tab3'" class="animate-fade-in">
+                <h2 class="text-2xl font-bold mb-2 text-blue-800 border-l-4 border-blue-600 pl-3">Khảo sát Đồ thị Động học đồng thời ($x - v - a$)</h2>
+                <p class="mb-6 text-gray-700 text-base">Hãy thay đổi các thanh trượt thông số để quan sát trực quan độ lệch pha tuần hoàn hình sin của bộ ba đại lượng (Giá trị đồ thị phản ánh đúng biên độ thực tế vật lý).</p>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1 bg-slate-50 p-6 rounded-xl border border-slate-300 shadow-sm flex flex-col justify-center space-y-6">
+                        <h3 class="font-bold text-xl text-gray-800 border-b pb-2">Thông số dao động</h3>
+                        
+                        <div>
+                            <label class="flex justify-between font-bold text-base mb-1 text-blue-700">
+                                <span>Biên độ ($A$)</span>
+                                <span>{{ amplitude }} cm</span>
+                            </label>
+                            <input type="range" v-model.number="amplitude" min="2" max="10" step="0.5" class="w-full h-3 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                        </div>
+
+                        <div>
+                            <label class="flex justify-between font-bold text-base mb-1 text-emerald-600">
+                                <span>Tần số góc ($\omega$)</span>
+                                <span>{{ omegaMultiplier }}&pi; rad/s</span>
+                            </label>
+                            <input type="range" v-model.number="omegaMultiplier" min="1" max="4" step="0.5" class="w-full h-3 bg-emerald-200 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                        </div>
+
+                        <div>
+                            <label class="flex justify-between font-bold text-base mb-1 text-purple-600">
+                                <span>Pha ban đầu ($\varphi$)</span>
+                                <span>{{ phiDeg }}&deg;</span>
+                            </label>
+                            <input type="range" v-model.number="phiDeg" min="-180" max="180" step="30" class="w-full h-3 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                        </div>
+
+                        <div class="bg-blue-100 p-4 rounded-lg border border-blue-300 text-sm font-semibold text-blue-900 space-y-1.5">
+                            <div>• $v_{\text{max}} = \omega A = $ <span class="text-emerald-700 font-bold font-mono">{{ (amplitude * omegaMultiplier * Math.PI).toFixed(1) }}</span> cm/s</div>
+                            <div>• $a_{\text{max}} = \omega^2 A = $ <span class="text-purple-700 font-bold font-mono">{{ (amplitude * Math.pow(omegaMultiplier * Math.PI, 2)).toFixed(0) }}</span> cm/s²</div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-white p-4 rounded-xl border border-gray-200 shadow-md">
+                        <div class="relative w-full h-[410px]">
+                            <canvas id="oscillationCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-show="currentTab === 'tab4'" class="animate-fade-in">
+                <h2 class="text-2xl font-bold mb-4 text-blue-800 border-l-4 border-blue-600 pl-3">Đánh giá Năng lực (Phản hồi bẫy tư duy)</h2>
+                
+                <div class="flex flex-col gap-8">
+                    <div v-for="(q, qIndex) in quizData" :key="q.id" class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="flex justify-between items-center border-b pb-3 mb-4">
+                            <span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">Câu số {{ qIndex + 1 }}</span>
+                            <span class="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-bold rounded-full">Mức độ: {{ q.level }}</span>
+                        </div>
+                        
+                        <p class="text-lg font-bold mb-4 text-slate-800 leading-snug" v-html="q.question"></p>
+                        
+                        <div v-if="q.type === 'choice'" class="flex flex-col gap-3">
+                            <div v-for="option in q.options" :key="option.id"
+                                 @click="selectOption(q, option)"
+                                 :class="['p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 text-base', getOptionClass(q, option)]">
+                                <span class="font-bold mr-3 bg-white px-2 py-1 rounded shadow-sm">{{ option.id }}</span> 
+                                <span v-html="option.text"></span>
+                            </div>
+                        </div>
+
+                        <div v-if="q.type === 'input'" class="flex flex-col gap-4">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <label class="font-bold text-slate-700 text-base">Nhập đáp án số học:</label>
+                                <input type="text" v-model="q.studentAnswer" placeholder="Ví dụ: 122,4" 
+                                       class="p-2 border-2 border-slate-400 rounded-lg text-base w-full sm:w-48 focus:outline-none focus:border-blue-500 font-bold text-center shadow-sm">
+                                <button @click="checkInputAnswer(q)" class="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-base shadow-md w-full sm:w-auto">
+                                    Nộp Bài
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="q.isAnswered || q.selectedOption" 
+                             :class="['mt-4 p-5 rounded-lg border-l-4 animate-fade-in text-base shadow-inner', 
+                                      q.isCorrect || (q.selectedOption && q.selectedOption.isCorrect) ? 'bg-green-50 border-green-500 text-green-900' : 'bg-orange-50 border-orange-500 text-orange-900']">
+                            <h4 class="font-bold mb-1">
+                                {{ q.isCorrect || (q.selectedOption && q.selectedOption.isCorrect) ? '🎉 Phân tích lý luận khoa học chính xác:' : '💡 Tháo gỡ góc nghẽn tư duy sai lầm:' }}
+                            </h4>
+                            <p v-html="q.type === 'choice' ? q.selectedOption.feedback : (q.isCorrect ? q.feedbackSuccess : q.feedbackError)"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    tabs: [
+                        { id: 'tab1', name: '1. Khởi động (Kéo thả)' },
+                        { id: 'tab2', name: '2. Lý thuyết trọng tâm' },
+                        { id: 'tab3', name: '3. Mô phỏng Đồ thị' },
+                        { id: 'tab4', name: '4. Đánh giá Năng lực' }
+                    ],
+                    currentTab: 'tab1',
+
+                    draggedItem: null,
+                    sourceZone: null,
+
+                    conceptZones: [
+                        { id: 'li_do', title: 'Vùng đặc trưng của <b>Li độ (x)</b>', items: [] },
+                        { id: 'van_toc', title: 'Vùng đặc trưng của <b>Vận tốc (v)</b>', items: [] },
+                        { id: 'gia_toc', title: 'Vùng đặc trưng của <b>Gia tốc (a)</b>', items: [] }
+                    ],
+                    formulaBank: [
+                        { id: 'item_1', text: 'Biểu thức giải tích: x = A.cos(ωt + φ)', matchId: 'li_do' },
+                        { id: 'item_2', text: 'Biểu thức giải tích: v = -ωA.sin(ωt + φ)', matchId: 'van_toc' },
+                        { id: 'item_3', text: 'Biểu thức liên hệ độc lập: a = -ω²x', matchId: 'gia_toc' },
+                        { id: 'item_4', text: 'Đạt độ lớn giá trị trị cực đại tại vị trí cân bằng và triệt tiêu hoàn toàn ở hai biên.', matchId: 'van_toc' },
+                        { id: 'item_5', text: 'Vectơ đại lượng luôn hướng về tâm vị trí cân bằng và tỉ lệ thuận với khoảng cách dời tâm.', matchId: 'gia_toc' },
+                        { id: 'item_6', text: 'Đại lượng hình học đặc trưng cho độ dời khỏi gốc toạ độ của vật ở thời điểm t.', matchId: 'li_do' }
+                    ],
+
+                    amplitude: 5,       
+                    omegaMultiplier: 2, 
+                    phiDeg: 0,
+                    myChart: null,
+                    isChartScheduled: false, // Flag debounce điều phối frame hoạt họa
+
+                    quizData: [
+                        {
+                            id: 1, level: 'Nhận biết', type: 'choice',
+                            question: 'Chọn nhận xét chính xác nhất về mối quan hệ pha giữa vận tốc và gia tốc của một vật dao động điều hoà?',
+                            options: [
+                                { id: 'A', text: 'Vận tốc biến thiên sớm pha $\\frac{\\pi}{2}\\text{ rad}$ so với gia tốc.', isCorrect: false, feedback: '<b>Lỗi lệch pha ngược hướng:</b> Bạn đã bị ngược. Hãy nhớ vận tốc sớm pha $\\frac{\\pi}{2}$ so với li độ, còn gia tốc ngược pha với li độ. Do đó gia tốc chạy nhanh hơn vận tốc góc $\\frac{\\pi}{2}$.' },
+                                { id: 'B', text: 'Gia tốc biến thiên sớm pha $\\frac{\\pi}{2}\\text{ rad}$ so với vận tốc.', isCorrect: true, feedback: '<b>Hoàn toàn chính xác!</b> Thuyết động học khẳng định gia tốc nhanh (sớm) pha hơn vận tốc góc $\\frac{\\pi}{2}$ hay một phần tư chu kì tuần hoàn.' },
+                                { id: 'C', text: 'Vận tốc và gia tốc luôn luôn biến thiên ngược pha hoàn toàn với nhau.', isCorrect: false, feedback: '<b>Lỗi nhầm lẫn đối tượng:</b> Đại lượng ngược pha hoàn toàn với gia tốc là li độ $x$, chứ không phải vận tốc $v$.' }
+                            ],
+                            selectedOption: null, isAnswered: false, isCorrect: false
+                        },
+                        {
+                            id: 2, level: 'Thông hiểu', type: 'choice',
+                            question: 'Một vật dao động điều hoà có phương trình li độ $x = 5\\cos(10\\pi t + \\frac{\\pi}{6})\\text{ (cm)}$. Pha ban đầu của dao động và pha toàn phần tại thời điểm $t = 0,05\\text{ s}$ là bao nhiêu?',
+                            options: [
+                                { id: 'A', text: '$\\frac{\\pi}{6}\\text{ rad}$ và $\\frac{2\\pi}{3}\\text{ rad}$.', isCorrect: true, feedback: '<b>Lý luận khoa học rất xuất sắc!</b> Pha ban đầu $\\varphi = \\frac{\\pi}{6}\\text{ rad}$. Pha dao động lúc $t = 0,05\\text{ s}$ là: $10\\pi(0,05) + \\frac{\\pi}{6} = \\frac{\\pi}{2} + \\frac{\\pi}{6} = \\frac{2\\pi}{3}\\text{ rad}$.' },
+                                { id: 'B', text: '$\\frac{\\pi}{6}\\text{ rad}$ và $\\frac{\\pi}{2}\\text{ rad}$.', isCorrect: false, feedback: '<b>Lỗi thiếu bước tích luỹ:</b> Bạn mới chỉ tính toán cụm góc quét $\\omega t = 0,5\\pi$ mà quên cộng gộp pha xuất phát ban đầu $\\frac{\\pi}{6}$.' },
+                                { id: 'C', text: '$5\\text{ cm}$ và $-2,5\\text{ cm}$.', isCorrect: false, feedback: '<b>Nhầm lẫn bản chất đại lượng:</b> Đề bài yêu cầu tìm giá trị góc "Pha" (đơn vị rad) chứ không hỏi giá trị tọa độ hình học (cm).' }
+                            ],
+                            selectedOption: null, isAnswered: false, isCorrect: false
+                        },
+                        {
+                            id: 3, level: 'Vận dụng', type: 'choice',
+                            question: 'Một vật dao động quanh vị trí cân bằng với biên độ $A = 10\\text{ cm}$ và chu kì $T = 2\\text{ s}$. Tại thời điểm $t = 0$, vật ở vị trí biên dương ($x = A$). Thời điểm đầu tiên vật đi qua vị trí có li độ $x = 5\\text{ cm}$ bằng bao nhiêu?',
+                            options: [
+                                { id: 'A', text: '$\\frac{1}{6}\\text{ giây}$', isCorrect: false, feedback: '<b>Lỗi nhầm gốc tọa độ:</b> Khoảng thời gian $\\frac{T}{12} = \\frac{1}{6}\\text{ s}$ chỉ đúng khi vật xuất phát từ Vị trí cân bằng đi ra vị trí $\\frac{A}{2}$.' },
+                                { id: 'B', text: '$\\frac{1}{3}\\text{ giây}$', isCorrect: true, feedback: '<b>Tính toán định lượng rất tốt!</b> Xuất phát từ biên dương về $x = 5\\text{ cm} = \\frac{A}{2}$ quét góc $60^\\circ = \\frac{\\pi}{3}$. Thời gian ngắn nhất là $t = \\frac{T}{6} = \\frac{2}{6} = \\frac{1}{3}\\text{ s}$.' },
+                                { id: 'C', text: '$0,5\\text{ giây}$', isCorrect: false, feedback: '<b>Mốc quá giới hạn:</b> Thời gian $0,5\\text{ s} = \\frac{T}{4}$ là lúc vật đã đi về thẳng tới gốc vị trí cân bằng $x = 0$.' }
+                            ],
+                            selectedOption: null, isAnswered: false, isCorrect: false
+                        },
+                        {
+                            id: 4, level: 'Vận dụng cao', type: 'input',
+                            question: 'Sơ đồ bàn xoay hình tròn có thanh nhỏ cách tâm $15\\text{ cm}$ quay đều với tốc độ góc $3\\pi\\text{ rad/s}$. Bóng đổ của thanh trùng khít với một con lắc đơn dao động điều hoà phía sau. Tính <b>tốc độ độ lớn vận tốc</b> của con lắc tại thời điểm góc quét đạt $60^\\circ$ tính từ biên dương ban đầu? (Lấy $\\pi = 3,1416$). <br><span class="text-xs text-red-600 font-bold mt-2 block italic">*Nhập kết quả có dấu phẩy thập phân, tròn 1 chữ số (Ví dụ: 122,4)*</span>',
+                            correctAnswer: '122,4',
+                            feedbackSuccess: '🎉 <b>Kỹ năng giải bài bàn xoay rất tốt!</b><br>1. Biên độ $A = R = 15\\text{ cm}$, tần số góc $\\omega = \Omega = 3\\pi\\text{ rad/s}$.<br>2. Góc quét $60^\\circ \\implies$ Pha dao động bằng $\\frac{\\pi}{3}$.<br>3. Tốc độ: $|v| = |-\\omega A \\sin(60^\\circ)| = 3\\pi \\times 15 \\times \\frac{\\sqrt{3}}{2} \\approx 122,4\\text{ cm/s}$.',
+                            feedbackError: '💡 <b>Tháo gỡ điểm nghẽn tính toán:</b><br>1. Đồng bộ thông số bàn xoay: $A = 15\\text{ cm}$, $\\omega = 3\\pi\\text{ rad/s}$.<br>2. Công thức độ lớn vận tốc động học: $|v| = \\omega A \\sin(60^\\circ)$.<br>3. Thay số: $3 \\times 3,1416 \\times 15 \\times 0,8660 = 122,4$. Hãy thử kiểm tra lại máy tính nhé!',
+                            studentAnswer: '', isAnswered: false, isCorrect: false
+                        }
+                    ]
+                }
+            },
+
+            computed: {
+                omega() {
+                    return this.omegaMultiplier * Math.PI;
+                },
+                phi() {
+                    return (this.phiDeg * Math.PI) / 180;
+                }
+            },
+
+            watch: {
+                // Sửa lỗi debounce hiệu năng: sử dụng requestAnimationFrame điều phối tiến trình thay vì ép văng luồng
+                amplitude() { this.scheduleChartUpdate(); },
+                omegaMultiplier() { this.scheduleChartUpdate(); },
+                phiDeg() { this.scheduleChartUpdate(); }
+            },
+
+            mounted() {
+                this.triggerMathJax();
+            },
+
+            methods: {
+                onDragStart(event, item, source) {
+                    this.draggedItem = item;
+                    this.sourceZone = source;
+                    event.dataTransfer.effectAllowed = 'move';
+                },
+                
+                onDrop(event, targetZone) {
+                    if (!this.draggedItem) return;
+
+                    if (this.sourceZone === 'bank') {
+                        this.formulaBank = this.formulaBank.filter(i => i.id !== this.draggedItem.id);
+                    } else {
+                        const zone = this.conceptZones.find(z => z.id === this.sourceZone);
+                        if (zone) zone.items = zone.items.filter(i => i.id !== this.draggedItem.id);
+                    }
+
+                    if (targetZone === 'bank') {
+                        this.formulaBank.push(this.draggedItem);
+                    } else {
+                        const zone = this.conceptZones.find(z => z.id === targetZone);
+                        if (zone) zone.items.push(this.draggedItem);
+                    }
+
+                    this.draggedItem = null;
+                    this.sourceZone = null;
+                    this.triggerMathJax();
+                },
+
+                getZoneColor(zone) {
+                    if (zone.items.length === 0) return 'border-gray-300 bg-slate-50';
+                    const isAllCorrect = zone.items.every(item => item.matchId === zone.id);
+                    return isAllCorrect ? 'bg-green-100 border-green-500 text-green-950' : 'bg-red-100 border-red-500 text-red-950';
+                },
+
+                switchTab(tabId) {
+                    this.currentTab = tabId;
+                    this.triggerMathJax();
+                    
+                    if (tabId === 'tab3') {
+                        this.$nextTick(() => {
+                            if (!this.myChart) {
+                                this.initChart();
+                            } else {
+                                this.myChart.resize(); 
+                                this.myChart.update('none');
+                            }
+                        });
+                    }
+                },
+
+                triggerMathJax() {
+                    this.$nextTick(() => {
+                        if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                            MathJax.typesetClear();
+                            MathJax.typesetPromise().catch((err) => console.log('MathJax Error: ', err));
+                        }
+                    });
+                },
+
+                selectOption(question, option) {
+                    question.selectedOption = option;
+                    this.triggerMathJax(); 
+                },
+
+                getOptionClass(question, option) {
+                    if (!question.selectedOption) return 'bg-slate-50 border-gray-200 hover:border-blue-400 hover:bg-blue-50';
+                    if (question.selectedOption.id === option.id) {
+                        return option.isCorrect ? 'bg-green-100 border-green-600 text-green-900 shadow-md font-medium' : 'bg-red-100 border-red-600 text-red-900 shadow-md font-medium';
+                    }
+                    return 'bg-slate-50 border-gray-200 opacity-50';
+                },
+
+                checkInputAnswer(question) {
+                    question.isAnswered = true;
+                    const processedAns = question.studentAnswer.trim().replace('.', ',');
+                    question.isCorrect = (processedAns === question.correctAnswer);
+                    this.triggerMathJax();
+                },
+
+                // Sửa lỗi logic vật lý 3 & 8: Đưa toàn bộ các hệ số vật lý thực tế A, ω, ω² quay trở lại phương trình mẫu
+                generateChartData() {
+                    const labels = [];
+                    const xData = [];
+                    const vData = [];
+                    const aData = [];
+                    
+                    const A = this.amplitude;
+                    const w = this.omega;
+                    const p = this.phi;
+
+                    for (let t = 0; t <= 2; t += 0.02) {
+                        labels.push(t.toFixed(2));
+                        
+                        // Giá trị toán lý nguyên bản của Vật lý 11
+                        const x_val = A * Math.cos(w * t + p);
+                        const v_val = -w * A * Math.sin(w * t + p);
+                        const a_val = -w * w * A * Math.cos(w * t + p);
+
+                        xData.push(x_val.toFixed(2));
+                        vData.push(v_val.toFixed(2));
+                        aData.push(a_val.toFixed(2));
+                    }
+                    return { labels, xData, vData, aData };
+                },
+
+                // Sửa lỗi scale vỡ đồ thị (Lỗi 9 & 10): Thiết lập hệ trục Multi-Axis độc lập kết hợp cơ chế khóa dải chặn biên an toàn
+                initChart() {
+                    if (typeof Chart === 'undefined') return;
+                    const ctx = document.getElementById('oscillationCanvas').getContext('2d');
+                    const { labels, xData, vData, aData } = this.generateChartData();
+
+                    this.myChart = Vue.markRaw(new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Li độ x (cm)',
+                                    data: xData,
+                                    borderColor: '#2563eb', 
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 3,
+                                    pointRadius: 0,
+                                    tension: 0.2,
+                                    yAxisID: 'y' // Trục trái
+                                },
+                                {
+                                    label: 'Vận tốc v (cm/s)',
+                                    data: vData,
+                                    borderColor: '#10b981', 
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 3,
+                                    pointRadius: 0,
+                                    tension: 0.2,
+                                    yAxisID: 'yV' // Trục phải
+                                },
+                                {
+                                    label: 'Gia tốc a (cm/s²)',
+                                    data: aData,
+                                    borderColor: '#ef4444', 
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 3,
+                                    pointRadius: 0,
+                                    tension: 0.2,
+                                    yAxisID: 'yA' // Trục ngầm ẩn
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { 
+                                    title: { display: true, text: 'Thời gian t (s)', font: { size: 14, weight: 'bold' } },
+                                    grid: { display: false }
+                                },
+                                // Trục Li độ: Max biên thiết lập là 10cm
+                                y: { 
+                                    type: 'linear', display: true, position: 'left',
+                                    title: { display: true, text: 'Li độ x (cm)', font: { size: 13, weight: 'bold', color: '#2563eb' } },
+                                    min: -11, max: 11
+                                },
+                                // Trục Vận tốc: Max biên vật lý thực tế lý thuyết là 4π * 10 ≈ 125.6 cm/s
+                                yV: { 
+                                    type: 'linear', display: true, position: 'right',
+                                    title: { display: true, text: 'Vận tốc v (cm/s)', font: { size: 13, weight: 'bold', color: '#10b981' } },
+                                    min: -130, max: 130,
+                                    grid: { drawOnChartArea: false } // Giữ sạch lưới đồ thị
+                                },
+                                // Trục Gia tốc: Max biên vật lý thực tế lý thuyết là (4π)² * 10 ≈ 1579 cm/s²
+                                yA: { 
+                                    type: 'linear', display: false, // Ẩn nhãn trục số để giao diện không bị rối loạn
+                                    min: -1650, max: 1650
+                                }
+                            },
+                            plugins: {
+                                legend: { labels: { font: { size: 12, weight: 'bold' } } }
+                            }
+                        }
+                    }));
+                },
+
+                // Sửa lỗi phụ 11: Ứng dụng requestAnimationFrame chặn đứng việc tràn bộ đệm repaint canvas liên tục
+                scheduleChartUpdate() {
+                    if (this.isChartScheduled) return;
+                    this.isChartScheduled = true;
+                    
+                    requestAnimationFrame(() => {
+                        this.updateOscillationChart();
+                        this.isChartScheduled = false;
+                    });
+                },
+
+                updateOscillationChart() {
+                    if (!this.myChart) return;
+                    const { xData, vData, aData } = this.generateChartData();
+                    this.myChart.data.datasets[0].data = xData;
+                    this.myChart.data.datasets[1].data = vData;
+                    this.myChart.data.datasets[2].data = aData;
+                    this.myChart.update('none'); // Khóa hiệu ứng chuyển cảnh để mượt mà tuyệt đối khi kéo tay
+                }
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+</html>
